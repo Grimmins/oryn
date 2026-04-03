@@ -31,5 +31,8 @@
     "host_permissions": [
       "https://*/*"
     ]
+  },
+  "browser": {
+    "@ledgerhq/device-transport-kit-web-hid": "@ledgerhq/device-transport-kit-web-hid/dist/index.js"
   }
 }
