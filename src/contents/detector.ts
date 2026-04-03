@@ -150,5 +150,96 @@ function watchInputs() {
   document.querySelectorAll<HTMLInputElement>(USERNAME_SELECTORS).forEach(watch)
 }
 
-new MutationObserver(watchInputs).observe(document.body, { childList: true, subtree: true })
+
+// ── New password detection ───────────────────────────────────────
+
+const SIGNUP_KEYWORDS = /sign.?up|register|create|join|s'inscrire|inscription|nouveau|new.?account/i
+
+function isNewPasswordForm(form: HTMLFormElement): boolean {
+  // Two password fields = confirm password pattern
+  if (form.querySelectorAll("input[type=password]").length >= 2) return true
+  // autocomplete="new-password"
+  if (form.querySelector('input[autocomplete="new-password"]')) return true
+  // Submit button text
+  const submit = form.querySelector<HTMLElement>('[type=submit], button[type=button]')
+  if (submit && SIGNUP_KEYWORDS.test(submit.textContent ?? "")) return true
+  // Page title / heading
+  return SIGNUP_KEYWORDS.test(document.title + (document.querySelector("h1")?.textContent ?? ""))
+}
+
+let saveBanner: HTMLDivElement | null = null
+
+function showSaveBanner(username: string, password: string) {
+  saveBanner?.remove()
+
+  const banner = document.createElement("div")
+  banner.style.cssText = `
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 2147483647;
+    background: #ffffff;
+    border: 1.5px solid #e4e2ff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(97,82,232,0.18);
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 14px 16px;
+    width: 280px;
+    animation: oryn-in 0.2s ease;
+  `
+  banner.innerHTML = `
+    <style>@keyframes oryn-in { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }</style>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="width:32px;height:32px;border-radius:10px;background:#6152e8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔐</div>
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#1a1535;">Save to Oryn?</div>
+        <div style="font-size:11px;color:#8b84b0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${username || window.location.hostname}</div>
+      </div>
+      <button id="__oryn_close" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#8b84b0;padding:0;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button id="__oryn_ignore" style="flex:1;padding:8px 0;border-radius:10px;border:1.5px solid #e4e2ff;background:#f5f4ff;color:#8b84b0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Ignore</button>
+      <button id="__oryn_save" style="flex:2;padding:8px 0;border-radius:10px;border:none;background:#6152e8;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Save password</button>
+    </div>
+  `
+
+  document.body.appendChild(banner)
+  saveBanner = banner
+
+  const close = () => { banner.remove(); saveBanner = null }
+
+  banner.querySelector("#__oryn_close")?.addEventListener("click", close)
+  banner.querySelector("#__oryn_ignore")?.addEventListener("click", close)
+  banner.querySelector("#__oryn_save")?.addEventListener("click", () => {
+    chrome.runtime.sendMessage({
+      type: "SAVE_PASSWORD_REQUEST",
+      domain: window.location.hostname,
+      username,
+      password,
+    })
+    close()
+  })
+
+  // Auto-dismiss after 12s
+  setTimeout(close, 12_000)
+}
+
+function watchForms() {
+  document.querySelectorAll<HTMLFormElement>("form").forEach((form) => {
+    if (form.dataset.orynForm) return
+    form.dataset.orynForm = "true"
+
+    form.addEventListener("submit", () => {
+      if (!isNewPasswordForm(form)) return
+      const passwordInput = form.querySelector<HTMLInputElement>("input[type=password]")
+      const usernameInput = form.querySelector<HTMLInputElement>(USERNAME_SELECTORS)
+      const password = passwordInput?.value
+      const username = usernameInput?.value ?? ""
+      if (password) showSaveBanner(username, password)
+    })
+  })
+}
+
+new MutationObserver(() => { watchInputs(); watchForms() }).observe(document.body, { childList: true, subtree: true })
 watchInputs()
+watchForms()
+
