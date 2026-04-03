@@ -30,7 +30,13 @@
   },
   "manifest": {
     "host_permissions": [
-      "https://*/*"
+      "https://*/*",
+      "<all_urls>"
+    ],
+    "permissions": [
+      "storage",
+      "tabs",
+      "activeTab"
     ]
   },
   "browser": {
