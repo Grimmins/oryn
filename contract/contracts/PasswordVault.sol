@@ -54,4 +54,38 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
         return (entry.encryptedBlobPassword, entry.encryptedBlobUsername, entry.version, entry.updatedAt);
     }
 
+    function getAllPasswords()
+        external
+        view
+        returns (
+            bytes32[] memory siteHashes,
+            bytes[] memory encryptedBlobPasswords,
+            bytes[] memory encryptedBlobUsernames,
+            uint256[] memory versions,
+            uint256[] memory updatedAts
+        )
+    {
+        bytes32[] storage hashes = _siteHashes[msg.sender];
+        uint256 len = hashes.length;
+
+        siteHashes = new bytes32[](len);
+        encryptedBlobPasswords = new bytes[](len);
+        encryptedBlobUsernames = new bytes[](len);
+        versions = new uint256[](len);
+        updatedAts = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            bytes32 h = hashes[i];
+            VaultEntry storage e = _vaults[msg.sender][h];
+            siteHashes[i] = h;
+            encryptedBlobPasswords[i] = e.encryptedBlobPassword;
+            encryptedBlobUsernames[i] = e.encryptedBlobUsername;
+            versions[i] = e.version;
+            updatedAts[i] = e.updatedAt;
+        }
+    }
+
+    function vaultSize() external view returns (uint256) {
+        return _siteHashes[msg.sender].length;
+    }
 }
