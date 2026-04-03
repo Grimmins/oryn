@@ -9,11 +9,12 @@ export type VaultEntry = {
 type Props = {
   address: string | null
   entries: VaultEntry[]
+  currentDomain: string | null
   onAdd: () => void
   onDisconnect: () => void
 }
 
-export function VaultScreen({ address, entries, onAdd, onDisconnect }: Props) {
+export function VaultScreen({ address, entries, currentDomain, onAdd, onDisconnect }: Props) {
   const truncate = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
   return (

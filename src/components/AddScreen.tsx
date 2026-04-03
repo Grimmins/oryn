@@ -3,11 +3,12 @@ import { C, btn, input, label } from "../styles"
 
 type Props = {
   onBack: () => void
+  currentDomain: string | null
   onSave: (domain: string, username: string, password: string) => void
 }
 
-export function AddScreen({ onBack, onSave }: Props) {
-  const [domain, setDomain] = useState("")
+export function AddScreen({ onBack, currentDomain, onSave }: Props) {
+  const [domain, setDomain] = useState(currentDomain ?? "")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
 

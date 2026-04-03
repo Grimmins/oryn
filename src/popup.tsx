@@ -1,5 +1,5 @@
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AddScreen } from "./components/AddScreen"
 import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
@@ -15,7 +15,14 @@ export default function Popup() {
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [screen, setScreen] = useState<Screen>("home")
-  const [entries] = useState<VaultEntry[]>([])
+  const [entries, setEntries] = useState<VaultEntry[]>([])
+  const [currentDomain, setCurrentDomain] = useState<string | null>(null)
+
+  useEffect(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (tab?.url) setCurrentDomain(new URL(tab.url).hostname)
+    })
+  }, [])
 
   const connect = async () => {
     setLoading(true)
@@ -28,6 +35,8 @@ export default function Popup() {
       setDeviceName(device.name)
       setConnected(true)
       setStatus(null)
+      // TODO: load vault from blockchain and decrypt entries, then:
+      // await chrome.storage.session.set({ vault: decryptedEntries })
     } catch (e: any) {
       setStatus(e?._tag === "NoAccessibleDeviceError" ? "No device selected" : "Connection failed")
       console.error(e)
@@ -38,15 +47,23 @@ export default function Popup() {
 
   const disconnect = async () => {
     await cleanup()
+    await chrome.storage.session.remove("vault")
     setConnected(false)
     setDeviceName(null)
     setAddress(null)
+    setEntries([])
     setScreen("home")
     setStatus(null)
   }
 
-  const handleSave = (_domain: string, _username: string, _password: string) => {
-    // TODO: encrypt + store on-chain
+  const handleSave = async (domain: string, username: string, password: string) => {
+    const newEntry: VaultEntry = { domain, username, siteHash: crypto.randomUUID() }
+    const updated = [...entries, newEntry]
+    setEntries(updated)
+    // Persist decrypted entry to session for autofill
+    const session = updated.map((e) => ({ domain: e.domain, username: e.username, password: e.domain === domain ? password : "" }))
+    await chrome.storage.session.set({ vault: session })
+    // TODO: encrypt + write on-chain
     setScreen("home")
   }
 
@@ -71,8 +88,8 @@ export default function Popup() {
         {!connected
           ? <ConnectScreen loading={loading} status={status} onConnect={connect} />
           : screen === "home"
-          ? <VaultScreen address={address} entries={entries} onAdd={() => setScreen("add")} onDisconnect={disconnect} />
-          : <AddScreen onBack={() => setScreen("home")} onSave={handleSave} />
+          ? <VaultScreen address={address} entries={entries} currentDomain={currentDomain} onAdd={() => setScreen("add")} onDisconnect={disconnect} />
+          : <AddScreen onBack={() => setScreen("home")} currentDomain={currentDomain} onSave={handleSave} />
         }
       </div>
     </div>
