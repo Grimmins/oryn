@@ -11,7 +11,7 @@ const USE_SPECULOS = true
 export const dmk = new DeviceManagementKitBuilder()
   .addTransport(
     USE_SPECULOS
-      ? speculosTransportFactory("http://localhost:5000")
+      ? speculosTransportFactory("http://localhost:5001")
       : webHidTransportFactory
   )
   .build()
