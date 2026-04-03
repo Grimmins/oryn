@@ -3,12 +3,17 @@ import {
   DeviceManagementKitBuilder,
   
 } from "@ledgerhq/device-management-kit";
-import { webHidTransportFactory } from "@ledgerhq/device-transport-kit-web-hid";
+import { speculosTransportFactory } from "@ledgerhq/device-transport-kit-speculos"
+import { webHidTransportFactory } from "@ledgerhq/device-transport-kit-web-hid"
 
+const USE_SPECULOS = true
 
 export const dmk = new DeviceManagementKitBuilder()
-  .addLogger(new ConsoleLogger())
-  .addTransport(webHidTransportFactory)
+  .addTransport(
+    USE_SPECULOS
+      ? speculosTransportFactory("http://localhost:5000")
+      : webHidTransportFactory
+  )
   .build()
  
 // Global variables to store subscriptions and session info
