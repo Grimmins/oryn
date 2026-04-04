@@ -1,25 +1,17 @@
-import { DeviceStatus } from "@ledgerhq/device-management-kit"
-import { ethers } from "ethers"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { AddScreen } from "./components/AddScreen"
 import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
 import { ThemeProvider, useTheme } from "./lib/ThemeContext"
-import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
-import { LedgerSigner } from "./lib/ledger-signer"
-import { loadVault, saveEntry } from "./lib/vault"
 import type { SessionEntry } from "./background"
 import "./style.css"
 import logoUrl from "url:../assets/logo.png"
-
-const RPC_URL = "https://sepolia.base.org"
 
 type Screen = "home" | "add"
 
 function PopupInner() {
   const { C, mode, toggle } = useTheme()
   const [connected, setConnected] = useState(false)
-  const [, setDeviceName] = useState<string | null>(null)
   const [address, setAddress] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -27,8 +19,7 @@ function PopupInner() {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [currentDomain, setCurrentDomain] = useState<string | null>(null)
 
-  const signerRef = useRef<LedgerSigner | null>(null)
-
+  // Restore state from session on popup open
   useEffect(() => {
     chrome.storage.session.get(["sessionId", "ownerAddress", "vault"], ({ sessionId, ownerAddress, vault }) => {
       if (sessionId) {
@@ -43,44 +34,43 @@ function PopupInner() {
     })
   }, [])
 
-  const connect = async () => {
+  // Listen to background status updates during connection
+  useEffect(() => {
+    const listener = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.connectionStatus?.newValue) {
+        const { step, connected: isConnected, error } = changes.connectionStatus.newValue
+        if (error) { setStatus(error); setLoading(false); return }
+        if (isConnected) {
+          chrome.storage.session.get(["ownerAddress", "vault"], ({ ownerAddress, vault }) => {
+            if (ownerAddress) setAddress(ownerAddress)
+            const sessionEntries: SessionEntry[] = vault ?? []
+            setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
+            setConnected(true)
+            setStatus(null)
+            setLoading(false)
+          })
+          return
+        }
+        if (step) setStatus(step)
+      }
+      // Reflect vault additions (e.g. from save)
+      if (changes.vault?.newValue) {
+        const sessionEntries: SessionEntry[] = changes.vault.newValue
+        setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
+      }
+    }
+    chrome.storage.session.onChanged.addListener(listener)
+    return () => chrome.storage.session.onChanged.removeListener(listener)
+  }, [])
+
+  const handleConnect = async () => {
     setLoading(true)
     setStatus("Looking for Ledger…")
-    try {
-      const sessionId = await startDiscoveryAndConnect((state) => {
-        if (state.deviceStatus === DeviceStatus.LOCKED) setStatus("Locked — enter your PIN")
-      })
-      const device = dmk.getConnectedDevice({ sessionId })
-
-      const provider = new ethers.JsonRpcProvider(RPC_URL)
-      const signer = new LedgerSigner(sessionId, provider)
-      signerRef.current = signer
-
-      setStatus("Waiting for Ledger confirmation…")
-      const ownerAddress = await getEthAddress(sessionId)
-
-      setStatus("Loading vault…")
-      const loaded = await loadVault(signer, ownerAddress)
-      const vault: SessionEntry[] = loaded.map(e => ({ domain: e.domain, username: e.username ?? "", password: "" }))
-
-      await chrome.runtime.sendMessage({ type: "INITIALIZE_DEVICE", device, ownerAddress, vault })
-
-      setAddress(ownerAddress)
-      setEntries(loaded)
-      setConnected(true)
-      setStatus(null)
-    } catch (e: any) {
-      setStatus(e?._tag === "NoAccessibleDeviceError" ? "No device selected" : "Connection failed")
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
+    chrome.runtime.sendMessage({ type: "CONNECT_LEDGER" })
   }
 
-  const disconnect = async () => {
-    await cleanup()
-    await chrome.storage.session.clear()
-    signerRef.current = null
+  const handleDisconnect = async () => {
+    await chrome.runtime.sendMessage({ type: "DISCONNECT_LEDGER" })
     setConnected(false)
     setAddress(null)
     setEntries([])
@@ -89,26 +79,14 @@ function PopupInner() {
   }
 
   const handleSave = async (domain: string, username: string, password: string) => {
-    const signer = signerRef.current
-    if (!signer) return
-
     setStatus("Waiting for Ledger confirmation…")
-    try {
-      await saveEntry(domain, username, password, signer)
-    } catch (e) {
-      console.error("Failed to save on-chain:", e)
-      setStatus("Save failed")
-      console.error(e)
-      return
+    const result = await chrome.runtime.sendMessage({ type: "SAVE_PASSWORD_REQUEST", domain, username, password })
+    if (result?.ok) {
+      setStatus(null)
+      setScreen("home")
+    } else {
+      setStatus(result?.error ?? "Save failed")
     }
-
-    const entry: SessionEntry = { domain, username, password }
-    await chrome.runtime.sendMessage({ type: "ADD_ENTRY", entry })
-
-    const newEntry: VaultEntry = { domain, username, siteHash: crypto.randomUUID() }
-    setEntries(prev => [...prev, newEntry])
-    setStatus(null)
-    setScreen("home")
   }
 
   return (
@@ -139,9 +117,9 @@ function PopupInner() {
       {/* Body */}
       <div style={{ flex: 1, padding: "20px 22px", display: "flex", flexDirection: "column" }}>
         {!connected
-          ? <ConnectScreen loading={loading} status={status} onConnect={connect} />
+          ? <ConnectScreen loading={loading} status={status} onConnect={handleConnect} />
           : screen === "home"
-          ? <VaultScreen address={address} entries={entries} currentDomain={currentDomain} onAdd={() => setScreen("add")} onDisconnect={disconnect} />
+          ? <VaultScreen address={address} entries={entries} currentDomain={currentDomain} onAdd={() => setScreen("add")} onDisconnect={handleDisconnect} />
           : <AddScreen onBack={() => setScreen("home")} currentDomain={currentDomain} onSave={handleSave} />
         }
       </div>

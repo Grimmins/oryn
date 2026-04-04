@@ -47,9 +47,13 @@ function findPasswordField(usernameInput: HTMLInputElement): HTMLInputElement | 
 }
 
 function fill(input: HTMLInputElement, value: string) {
-  input.value = value
+  input.focus()
+  // Native input value setter to trigger React/Vue synthetic events
+  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set
+  nativeInputValueSetter?.call(input, value)
   input.dispatchEvent(new Event("input", { bubbles: true }))
   input.dispatchEvent(new Event("change", { bubbles: true }))
+  input.blur()
 }
 
 function applyCredentials(
@@ -68,7 +72,7 @@ function applyCredentials(
 
 let dropdown: HTMLDivElement | null = null
 
-function showDropdown(anchor: HTMLInputElement, username: string, password: string) {
+function showDropdown(anchor: HTMLInputElement, domain: string) {
   if (hideTimeout) clearTimeout(hideTimeout)
   removeDropdown()
 
@@ -96,7 +100,7 @@ function showDropdown(anchor: HTMLInputElement, username: string, password: stri
       <img src="${chrome.runtime.getURL("assets/logo.png")}" style="width:28px;height:28px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
       <div style="flex:1;min-width:0;">
         <div style="font-size:10px;color:#8b84b0;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Oryn</div>
-        <div style="font-size:13px;font-weight:600;color:#1a1535;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${username}</div>
+        <div style="font-size:13px;font-weight:600;color:#1a1535;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${domain}</div>
       </div>
       <div style="font-size:11px;color:#6152e8;font-weight:700;flex-shrink:0;">Fill ↵</div>
     </div>
@@ -105,11 +109,58 @@ function showDropdown(anchor: HTMLInputElement, username: string, password: stri
   document.body.appendChild(div)
   dropdown = div
 
-  div.querySelector("#__oryn_item")?.addEventListener("mousedown", (e) => {
+  div.querySelector("#__oryn_item")?.addEventListener("mousedown", async (e) => {
     e.preventDefault()
-    applyCredentials(anchor, username, password)
     removeDropdown()
+    showLedgerPrompt(anchor)
   })
+}
+
+async function showLedgerPrompt(anchor: HTMLInputElement) {
+  const prompt = document.createElement("div")
+  prompt.id = "__oryn_ledger_prompt"
+  prompt.style.cssText = `
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 2147483647;
+    background: #ffffff;
+    border: 1.5px solid #e4e2ff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(97,82,232,0.18);
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 16px 18px;
+    width: 260px;
+    animation: oryn-in 0.2s ease;
+  `
+  prompt.innerHTML = `
+    <style>@keyframes oryn-in { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }</style>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <img src="${chrome.runtime.getURL("assets/logo.png")}" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
+      <span style="font-size:13px;font-weight:800;color:#1a1535;">Confirm on Ledger</span>
+    </div>
+    <div style="font-size:12px;color:#8b84b0;line-height:1.6;margin-bottom:12px;">
+      Check your Ledger screen and <strong style="color:#6152e8;">approve</strong> the signature request to decrypt your password.
+    </div>
+    <div id="__oryn_ledger_spinner" style="display:flex;align-items:center;gap:8px;">
+      <div style="width:14px;height:14px;border:2px solid #e4e2ff;border-top-color:#6152e8;border-radius:50%;animation:oryn-spin 0.7s linear infinite;flex-shrink:0;"></div>
+      <span style="font-size:11px;color:#8b84b0;font-weight:600;">Waiting for approval…</span>
+    </div>
+    <style>@keyframes oryn-spin { to { transform: rotate(360deg) } }</style>
+  `
+  document.body.appendChild(prompt)
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "AUTOFILL_REQUEST",
+      domain: window.location.hostname,
+    })
+    prompt.remove()
+    if (response?.username && response?.password) {
+      applyCredentials(anchor, response.username, response.password)
+    }
+  } catch {
+    prompt.remove()
+  }
 }
 
 function removeDropdown() {
@@ -122,13 +173,12 @@ let hideTimeout: ReturnType<typeof setTimeout> | null = null
 // ── Focus logic ──────────────────────────────────────────────────
 
 async function onFocus(anchor: HTMLInputElement) {
-console.log("Input focused, requesting credentials for domain:", window.location.hostname)
   const response = await chrome.runtime.sendMessage({
-    type: "AUTOFILL_REQUEST",
+    type: "AUTOFILL_CHECK",
     domain: window.location.hostname,
   })
-  if (response?.password) {
-    showDropdown(anchor, response.username ?? window.location.hostname, response.password)
+  if (response?.domain) {
+    showDropdown(anchor, response.domain)
   }
 }
 
