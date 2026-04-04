@@ -32,7 +32,13 @@
     "background": {
       "type": "module"
     },
-    "permissions": ["storage", "tabs", "activeTab", "alarms"]
+    "permissions": ["storage", "tabs", "activeTab", "alarms"],
+    "web_accessible_resources": [
+      {
+        "resources": ["assets/logo.png"],
+        "matches": ["<all_urls>"]
+      }
+    ]
   },
   "browser": {
     "@ledgerhq/device-transport-kit-web-hid": "@ledgerhq/device-transport-kit-web-hid/dist/index.js"

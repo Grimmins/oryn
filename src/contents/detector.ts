@@ -93,7 +93,7 @@ function showDropdown(anchor: HTMLInputElement, username: string, password: stri
   div.innerHTML = `
     <style>@keyframes oryn-in { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }</style>
     <div id="__oryn_item" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;">
-      <div style="width:28px;height:28px;border-radius:8px;background:#6152e8;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🔐</div>
+      <img src="${chrome.runtime.getURL("assets/logo.png")}" style="width:28px;height:28px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
       <div style="flex:1;min-width:0;">
         <div style="font-size:10px;color:#8b84b0;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Oryn</div>
         <div style="font-size:13px;font-weight:600;color:#1a1535;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${username}</div>
@@ -190,7 +190,7 @@ function showSaveBanner(username: string, password: string) {
   banner.innerHTML = `
     <style>@keyframes oryn-in { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }</style>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-      <div style="width:32px;height:32px;border-radius:10px;background:#6152e8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔐</div>
+      <img src="${chrome.runtime.getURL("assets/logo.png")}" style="width:32px;height:32px;border-radius:10px;object-fit:cover;flex-shrink:0;" />
       <div>
         <div style="font-size:12px;font-weight:800;color:#1a1535;">Save to Oryn?</div>
         <div style="font-size:11px;color:#8b84b0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${username || window.location.hostname}</div>

@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { C, btn, input, label } from "../styles"
+import { useTheme } from "../lib/ThemeContext"
+import { btn, inputStyle, labelStyle } from "../styles"
 
 type Props = {
   onBack: () => void
@@ -8,6 +9,7 @@ type Props = {
 }
 
 export function AddScreen({ onBack, currentDomain, onSave }: Props) {
+  const { C } = useTheme()
   const [domain, setDomain] = useState(currentDomain ?? "")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -31,13 +33,13 @@ export function AddScreen({ onBack, currentDomain, onSave }: Props) {
       {/* Fields */}
       {fields.map((f) => (
         <div key={f.key} style={{ marginBottom: 14 }}>
-          <label style={label}>{f.label}</label>
+          <label style={{ ...labelStyle, color: C.muted }}>{f.label}</label>
           <input
             type={f.password ? "password" : "text"}
             placeholder={f.placeholder}
             value={f.value}
             onChange={(e) => f.set(e.target.value)}
-            style={input}
+            style={inputStyle(C)}
           />
         </div>
       ))}
