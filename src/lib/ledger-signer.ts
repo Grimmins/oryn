@@ -1,6 +1,6 @@
 import { SignerEthBuilder } from "@ledgerhq/device-signer-kit-ethereum"
 import { ethers } from "ethers"
-import { DERIVATION_PATH, actionToPromise, dmk, getEthAddress, signPersonalMessage } from "./dmk"
+import { DERIVATION_PATH, actionToPromise, getDmk as _getDmk, getEthAddress, signPersonalMessage } from "./dmk"
 
 export class LedgerSigner extends ethers.AbstractSigner {
   constructor(
@@ -20,7 +20,7 @@ export class LedgerSigner extends ethers.AbstractSigner {
   }
 
   async signTransaction(tx: ethers.TransactionRequest): Promise<string> {
-    const signerEth = new SignerEthBuilder({ dmk, sessionId: this.sessionId }).build()
+    const signerEth = new SignerEthBuilder({ dmk: _getDmk(), sessionId: this.sessionId }).build()
     const populated = await this.populateTransaction(tx)
     const { from: _from, ...txWithoutFrom } = populated
     const transaction = ethers.Transaction.from(txWithoutFrom)

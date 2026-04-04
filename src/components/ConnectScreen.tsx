@@ -1,12 +1,13 @@
 import { useState } from "react"
 import { useTheme } from "../lib/ThemeContext"
-import { btn } from "../styles"
+import { btn, inputStyle, labelStyle } from "../styles"
 import logoUrl from "url:../../assets/logo.png"
+import type { TransportConfig } from "../lib/dmk"
 
 type Props = {
   loading: boolean
   status: string | null
-  onConnect: () => void
+  onConnect: (transport: TransportConfig) => void
 }
 
 const HELP_STEPS = [
@@ -32,6 +33,16 @@ const HELP_STEPS = [
 export function ConnectScreen({ loading, status, onConnect }: Props) {
   const { C } = useTheme()
   const [showHelp, setShowHelp] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [useSpeculos, setUseSpeculos] = useState(false)
+  const [speculosPort, setSpeculosPort] = useState("5001")
+
+  const handleConnect = () => {
+    const transport: TransportConfig = useSpeculos
+      ? { type: "speculos", port: parseInt(speculosPort) || 5001 }
+      : { type: "webhid" }
+    onConnect(transport)
+  }
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "8px 0 16px" }}>
@@ -55,19 +66,62 @@ export function ConnectScreen({ loading, status, onConnect }: Props) {
         </div>
       )}
 
+      {/* Transport config */}
+      {showConfig && (
+        <div style={{ width: "100%", background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setUseSpeculos(false)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${!useSpeculos ? C.accent : C.border}`, background: !useSpeculos ? C.accentLight : "transparent", color: !useSpeculos ? C.accent : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Real device
+            </button>
+            <button
+              onClick={() => setUseSpeculos(true)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${useSpeculos ? C.accent : C.border}`, background: useSpeculos ? C.accentLight : "transparent", color: useSpeculos ? C.accent : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Speculos
+            </button>
+          </div>
+          {useSpeculos && (
+            <div>
+              <label style={{ ...labelStyle, color: C.muted }}>Speculos port</label>
+              <input
+                type="number"
+                value={speculosPort}
+                onChange={(e) => setSpeculosPort(e.target.value)}
+                style={inputStyle(C)}
+                placeholder="5001"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* CTA */}
-      <button onClick={onConnect} disabled={loading} style={btn({ background: C.accent, color: "#fff", opacity: loading ? 0.65 : 1, boxShadow: "0 4px 16px rgba(97,82,232,0.3)" })}>
+      <button onClick={handleConnect} disabled={loading} style={btn({ background: C.accent, color: "#fff", opacity: loading ? 0.65 : 1, boxShadow: "0 4px 16px rgba(97,82,232,0.3)" })}>
         {loading ? "Searching…" : "Connect Ledger Device"}
       </button>
 
-      {/* Help button */}
-      <button
-        onClick={() => setShowHelp(true)}
-        style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12, fontWeight: 600, padding: 0 }}
-      >
-        <span style={{ width: 18, height: 18, borderRadius: "50%", border: `1.5px solid ${C.muted}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>?</span>
-        First time setup?
-      </button>
+      <div style={{ display: "flex", gap: 16 }}>
+        {/* Config button */}
+        <button
+          onClick={() => setShowConfig(v => !v)}
+          style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12, fontWeight: 600, padding: 0 }}
+        >
+          <span style={{ fontSize: 14 }}>⚙️</span>
+          {useSpeculos ? `Speculos :${speculosPort}` : "Real device"}
+        </button>
+
+        {/* Help button */}
+        <button
+          onClick={() => setShowHelp(true)}
+          style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12, fontWeight: 600, padding: 0 }}
+        >
+          <span style={{ width: 18, height: 18, borderRadius: "50%", border: `1.5px solid ${C.muted}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>?</span>
+          First time setup?
+        </button>
+      </div>
 
       {/* Help modal */}
       {showHelp && (
@@ -83,7 +137,6 @@ export function ConnectScreen({ loading, status, onConnect }: Props) {
               <span style={{ fontWeight: 800, fontSize: 15, color: C.text }}>Disable Chrome Passwords</span>
               <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
             </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {HELP_STEPS.map((section, i) => (
                 <div key={i}>

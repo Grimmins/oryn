@@ -2,7 +2,7 @@ export {}
 
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
 import { ethers } from "ethers"
-import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
+import { type TransportConfig, buildDmk, cleanup, getDmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
 import { LedgerSigner } from "./lib/ledger-signer"
 import { getCredentials, loadVault } from "./lib/vault"
 import { executeSave } from "./lib/save-password"
@@ -25,13 +25,15 @@ function setStatus(step: string) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type === "CONNECT_LEDGER") {
+    const transport: TransportConfig = msg.transport ?? { type: "webhid" }
+    buildDmk(transport)
     setStatus("Looking for Ledger…")
     ;(async () => {
       try {
         const sessionId = await startDiscoveryAndConnect((state: any) => {
           if (state.deviceStatus === DeviceStatus.LOCKED) setStatus("Locked — enter your PIN")
         })
-        const device = dmk.getConnectedDevice({ sessionId })
+        const device = getDmk().getConnectedDevice({ sessionId })
 
         const provider = new ethers.JsonRpcProvider(RPC_URL)
         _signer = new LedgerSigner(sessionId, provider)
