@@ -39,7 +39,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 
         setStatus("Waiting for Ledger confirmation…")
         const ownerAddress = await getEthAddress(sessionId)
-        _signatureMaster = await _signer.signMessage("oryn:master:v1")
+        _signatureMaster = await _signer.signTypedData(
+          { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
+          { MasterKey: [{ name: "action", type: "string" }, { name: "version", type: "string" }] },
+          { action: "Derive master encryption key", version: "v1" },
+        )
 
         setStatus("Loading vault…")
         const entries = await loadVault(ownerAddress, _signatureMaster)

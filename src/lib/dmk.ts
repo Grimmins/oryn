@@ -2,7 +2,7 @@ import {
   DeviceActionStatus,
   DeviceManagementKitBuilder,
 } from "@ledgerhq/device-management-kit"
-import { SignerEthBuilder } from "@ledgerhq/device-signer-kit-ethereum"
+import { SignerEthBuilder, type TypedData } from "@ledgerhq/device-signer-kit-ethereum"
 import { speculosTransportFactory } from "@ledgerhq/device-transport-kit-speculos"
 import { ethers } from "ethers"
 
@@ -96,6 +96,13 @@ export async function getEthAddress(sessionId: string): Promise<string> {
 export async function signPersonalMessage(sessionId: string, message: string): Promise<string> {
   const signerEth = new SignerEthBuilder({ dmk: getDmk(), sessionId }).build()
   const { observable } = signerEth.signMessage(DERIVATION_PATH, message)
+  const sig = await actionToPromise<{ r: string; s: string; v: number }>(observable)
+  return ethers.Signature.from({ r: sig.r, s: sig.s, v: sig.v }).serialized
+}
+
+export async function signTypedDataMessage(sessionId: string, typedData: TypedData): Promise<string> {
+  const signerEth = new SignerEthBuilder({ dmk: getDmk(), sessionId }).build()
+  const { observable } = signerEth.signTypedData(DERIVATION_PATH, typedData)
   const sig = await actionToPromise<{ r: string; s: string; v: number }>(observable)
   return ethers.Signature.from({ r: sig.r, s: sig.s, v: sig.v }).serialized
 }

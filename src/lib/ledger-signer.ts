@@ -1,6 +1,6 @@
-import { SignerEthBuilder } from "@ledgerhq/device-signer-kit-ethereum"
+import { SignerEthBuilder, type TypedData } from "@ledgerhq/device-signer-kit-ethereum"
 import { ethers } from "ethers"
-import { DERIVATION_PATH, actionToPromise, getDmk as _getDmk, getEthAddress, signPersonalMessage } from "./dmk"
+import { DERIVATION_PATH, actionToPromise, getDmk as _getDmk, getEthAddress, signPersonalMessage, signTypedDataMessage } from "./dmk"
 
 export class LedgerSigner extends ethers.AbstractSigner {
   constructor(
@@ -38,7 +38,20 @@ export class LedgerSigner extends ethers.AbstractSigner {
     types: Record<string, ethers.TypedDataField[]>,
     value: Record<string, unknown>,
   ): Promise<string> {
-    throw new Error("signTypedData not supported")
+    const { EIP712Domain: _, ...typesWithoutDomain } = types
+    const primaryType = Object.keys(typesWithoutDomain)[0]
+    const ledgerTypedData: TypedData = {
+      domain: {
+        name: domain.name,
+        version: domain.version,
+        chainId: Number(domain.chainId),
+        verifyingContract: domain.verifyingContract ?? undefined,
+      },
+      types: typesWithoutDomain as TypedData["types"],
+      primaryType,
+      message: value,
+    }
+    return signTypedDataMessage(this.sessionId, ledgerTypedData)
   }
 
   connect(provider: ethers.Provider): LedgerSigner {
