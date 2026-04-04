@@ -34,6 +34,7 @@ async function main() {
   let nonce = await ethers.provider.getTransactionCount(signer.address, "latest")
   for (const e of entries) {
     const siteHash = fakeSiteHash(e.domain)
+    const blobDomain = fakeBlob(e.domain)
     const blobPW = fakeBlob(e.password)
     const blobU  = fakeBlob(e.username)
 

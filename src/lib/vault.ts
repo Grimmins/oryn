@@ -28,8 +28,7 @@ export async function saveEntry(
   const blobPW = await encrypt(AESkeyEntry, password)
   const blobU  = await encrypt(AESkeyEntry, username)
 
-  const signatureSalt = await signer.signMessage("oryn:salt:v1")
-  const salt = signatureSalt.slice(0, 32)
+  const salt = signatureMaster.slice(0, 32)
   const siteHash = ethers.keccak256(
     ethers.concat([ethers.toUtf8Bytes(domain), ethers.toUtf8Bytes(salt)])
   )

@@ -94,6 +94,7 @@ export default function Popup() {
     } catch (e) {
       console.error("Failed to save on-chain:", e)
       setStatus("Save failed")
+      console.error(e)
       return
     }
 

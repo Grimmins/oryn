@@ -1,5 +1,5 @@
 {
-  "address": "0xAa9cA41a2B708dB85768a663513b96EE4A10C68D",
+  "address": "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d",
   "abi": [
     {
       "anonymous": false,
@@ -37,6 +37,11 @@
         },
         {
           "internalType": "bytes[]",
+          "name": "encryptedBlobDomains",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "bytes[]",
           "name": "encryptedBlobPasswords",
           "type": "bytes[]"
         },
@@ -71,6 +76,11 @@
       "outputs": [
         {
           "internalType": "bytes",
+          "name": "encryptedBlobDomain",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
           "name": "encryptedBlobPassword",
           "type": "bytes"
         },
@@ -99,6 +109,11 @@
           "internalType": "bytes32",
           "name": "siteHash",
           "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "blobDomain",
+          "type": "bytes"
         },
         {
           "internalType": "bytes",

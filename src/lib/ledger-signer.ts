@@ -22,7 +22,10 @@ export class LedgerSigner extends ethers.AbstractSigner {
   async signTransaction(tx: ethers.TransactionRequest): Promise<string> {
     const signerEth = new SignerEthBuilder({ dmk, sessionId: this.sessionId }).build()
     const populated = await this.populateTransaction(tx)
-    const { observable } = signerEth.signTransaction(DERIVATION_PATH, populated as any)
+    const { from: _from, ...txWithoutFrom } = populated
+    const transaction = ethers.Transaction.from(txWithoutFrom)
+    const serialized = ethers.getBytes(transaction.unsignedSerialized)
+    const { observable } = signerEth.signTransaction(DERIVATION_PATH, serialized)
     const sig = await actionToPromise<{ r: string; s: string; v: number }>(observable)
     return ethers.Transaction.from({
       ...populated,
