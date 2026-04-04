@@ -1,11 +1,9 @@
-
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
-
+**/.idea/
+**/vault.json
 # testing
 /coverage
 
@@ -33,3 +31,10 @@ dist/
 .tsbuildinfo
 
 .claude/
+
+**/node_modules/
+**/artifacts/
+**/cache/
+**/typechain-types/
+**/dist/
+**/.env
