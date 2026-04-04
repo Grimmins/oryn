@@ -122,6 +122,7 @@ let hideTimeout: ReturnType<typeof setTimeout> | null = null
 // ── Focus logic ──────────────────────────────────────────────────
 
 async function onFocus(anchor: HTMLInputElement) {
+console.log("Input focused, requesting credentials for domain:", window.location.hostname)
   const response = await chrome.runtime.sendMessage({
     type: "AUTOFILL_REQUEST",
     domain: window.location.hostname,

@@ -1,8 +1,13 @@
+export {}
+
 export type SessionEntry = {
   domain: string
   username: string
   password: string
 }
+console.log("Background service worker loaded ✓")
+
+var sessionId : string | null = null
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type === "INITIALIZE_DEVICE") {

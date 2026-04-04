@@ -9,6 +9,7 @@ import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk
 import { LedgerSigner } from "./lib/ledger-signer"
 import { loadVault, saveEntry } from "./lib/vault"
 import { C } from "./styles"
+import type { SessionEntry } from "./background"
 
 const RPC_URL = "https://sepolia.base.org"
 
