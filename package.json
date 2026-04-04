@@ -29,14 +29,18 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "host_permissions": [
-      "https://*/*",
-      "<all_urls>"
-    ],
+    "background": {
+      "type": "module"
+    },
     "permissions": [
       "storage",
       "tabs",
-      "activeTab"
+      "activeTab",
+      "alarms"
+    ],
+    "host_permissions": [
+      "https://*/*",
+      "http://localhost/*"
     ]
   },
   "browser": {
