@@ -11,6 +11,7 @@ function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
 
 export async function saveEntry(
   domain: string,
+  username: string,
   password: string,
   signer: ethers.Signer,
   signatureMaster: string,
@@ -21,7 +22,7 @@ export async function saveEntry(
   const signatureEntry = await signer.signMessage(`oryn:save-password:${domain}`)
   const AESkeyEntry = await deriveAESKey(signatureEntry)
   const blobPW = await encrypt(AESkeyEntry, password)
-  const blobU  = await encrypt(AESkeyEntry, "")
+  const blobU  = await encrypt(AESkeyEntry, username)
 
   const salt = signatureMaster.slice(0, 32)
   const siteHash = ethers.keccak256(
@@ -48,14 +49,19 @@ export async function getCredentials(
     ethers.concat([ethers.toUtf8Bytes(domain), ethers.toUtf8Bytes(salt)])
   )
 
+  console.log("[getCredentials] fetching from contract for domain:", domain)
   const [, blobPW, blobU] = await contract.getPassword(siteHash)
+  console.log("[getCredentials] contract response received, blobPW length:", ethers.getBytes(blobPW).length)
   if (!blobPW || ethers.getBytes(blobPW).length === 0) return null
 
+  console.log("[getCredentials] signing entry key on Ledger…")
   const signatureEntry = await signer.signMessage(`oryn:save-password:${domain}`)
+  console.log("[getCredentials] entry key signed, decrypting…")
   const AESkeyEntry = await deriveAESKey(signatureEntry)
 
   const password = await decrypt(AESkeyEntry, ethers.getBytes(blobPW))
   const username = await decrypt(AESkeyEntry, ethers.getBytes(blobU))
+  console.log("[getCredentials] done")
 
   return { username, password }
 }

@@ -155,8 +155,8 @@ async function showLedgerPrompt(anchor: HTMLInputElement) {
       domain: window.location.hostname,
     })
     prompt.remove()
-    if (response?.username && response?.password) {
-      applyCredentials(anchor, response.username, response.password)
+    if (response?.password) {
+      applyCredentials(anchor, response.username ?? "", response.password)
     }
   } catch {
     prompt.remove()

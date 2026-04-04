@@ -81,12 +81,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     ;(async () => {
       if (!_signer || !_signatureMaster) { reply({ ok: false, error: "Ledger not connected" }); return }
       try {
-        await executeSave(msg.domain, msg.username, msg.password, _signer, _signatureMaster)
+        await executeSave(msg.domain, msg.username ?? "", msg.password, _signer, _signatureMaster)
         // Upsert in session vault (replace if domain already exists)
         chrome.storage.session.get("vault", ({ vault }) => {
           const existing: SessionEntry[] = vault ?? []
           const filtered = existing.filter(e => e.domain !== msg.domain)
-          const updated: SessionEntry[] = [...filtered, { domain: msg.domain, username: "", password: "" }]
+          const updated: SessionEntry[] = [...filtered, { domain: msg.domain, username: msg.username ?? "", password: "" }]
           chrome.storage.session.set({ vault: updated })
         })
         reply({ ok: true })
@@ -111,6 +111,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 
   if (msg.type === "AUTOFILL_REQUEST") {
     ;(async () => {
+      console.log("Autofill request received for domain:", msg.domain)
       if (!_signer || !_signatureMaster) { reply({ username: null, password: null }); return }
       chrome.storage.session.get(["vault", "ownerAddress"], async ({ vault, ownerAddress }) => {
         const entries: SessionEntry[] = vault ?? []
@@ -120,6 +121,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         console.log("Autofill request for domain:", msg.domain, "Matched vault entry:", match ? "Yes" : "No")
         if (!match || !ownerAddress) { reply({ username: null, password: null }); return }
         try {
+          console.log("Retrieving credentials for domain:", match.domain)
           const credentials = await getCredentials(match.domain, _signer!, ownerAddress, _signatureMaster!)
           console.log("Retrieved credentials for domain:", match.domain, "Username:", credentials?.username ? "Yes" : "No", "Password:", credentials?.password ? "Yes" : "No")
           reply(credentials ?? { username: null, password: null })
