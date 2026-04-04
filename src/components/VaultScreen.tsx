@@ -3,7 +3,7 @@ import { btn } from "../styles"
 
 export type VaultEntry = {
   domain: string
-  username: string
+  username: string | null
   siteHash: string
 }
 

@@ -1,13 +1,18 @@
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
-import { useEffect, useState } from "react"
+import { ethers } from "ethers"
+import { useEffect, useRef, useState } from "react"
 import { AddScreen } from "./components/AddScreen"
 import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
-import { cleanup, dmk, startDiscoveryAndConnect } from "./lib/dmk"
 import { ThemeProvider, useTheme } from "./lib/ThemeContext"
+import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
+import { LedgerSigner } from "./lib/ledger-signer"
+import { loadVault, saveEntry } from "./lib/vault"
 import type { SessionEntry } from "./background"
 import "./style.css"
 import logoUrl from "url:../assets/logo.png"
+
+const RPC_URL = "https://sepolia.base.org"
 
 type Screen = "home" | "add"
 
@@ -22,14 +27,15 @@ function PopupInner() {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [currentDomain, setCurrentDomain] = useState<string | null>(null)
 
+  const signerRef = useRef<LedgerSigner | null>(null)
+
   useEffect(() => {
-    chrome.storage.session.get("sessionId", ({ sessionId }) => {
+    chrome.storage.session.get(["sessionId", "ownerAddress", "vault"], ({ sessionId, ownerAddress, vault }) => {
       if (sessionId) {
         setConnected(true)
-        entries.length === 0 && chrome.storage.session.get("vault", ({ vault }) => {
-          const sessionEntries: SessionEntry[] = vault ?? []
-          setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
-        })
+        if (ownerAddress) setAddress(ownerAddress)
+        const sessionEntries: SessionEntry[] = vault ?? []
+        setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
       }
     })
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -45,8 +51,22 @@ function PopupInner() {
         if (state.deviceStatus === DeviceStatus.LOCKED) setStatus("Locked — enter your PIN")
       })
       const device = dmk.getConnectedDevice({ sessionId })
-      await chrome.runtime.sendMessage({ type: "INITIALIZE_DEVICE", device })
-      setDeviceName(device.name)
+
+      const provider = new ethers.JsonRpcProvider(RPC_URL)
+      const signer = new LedgerSigner(sessionId, provider)
+      signerRef.current = signer
+
+      setStatus("Waiting for Ledger confirmation…")
+      const ownerAddress = await getEthAddress(sessionId)
+
+      setStatus("Loading vault…")
+      const loaded = await loadVault(signer, ownerAddress)
+      const vault: SessionEntry[] = loaded.map(e => ({ domain: e.domain, username: e.username ?? "", password: "" }))
+
+      await chrome.runtime.sendMessage({ type: "INITIALIZE_DEVICE", device, ownerAddress, vault })
+
+      setAddress(ownerAddress)
+      setEntries(loaded)
       setConnected(true)
       setStatus(null)
     } catch (e: any) {
@@ -59,10 +79,9 @@ function PopupInner() {
 
   const disconnect = async () => {
     await cleanup()
-    await chrome.storage.session.remove("vault")
-    await chrome.storage.session.remove("sessionId")
+    await chrome.storage.session.clear()
+    signerRef.current = null
     setConnected(false)
-    setDeviceName(null)
     setAddress(null)
     setEntries([])
     setScreen("home")
@@ -70,11 +89,25 @@ function PopupInner() {
   }
 
   const handleSave = async (domain: string, username: string, password: string) => {
+    const signer = signerRef.current
+    if (!signer) return
+
+    setStatus("Waiting for Ledger confirmation…")
+    try {
+      await saveEntry(domain, username, password, signer)
+    } catch (e) {
+      console.error("Failed to save on-chain:", e)
+      setStatus("Save failed")
+      console.error(e)
+      return
+    }
+
+    const entry: SessionEntry = { domain, username, password }
+    await chrome.runtime.sendMessage({ type: "ADD_ENTRY", entry })
+
     const newEntry: VaultEntry = { domain, username, siteHash: crypto.randomUUID() }
-    const updated = [...entries, newEntry]
-    setEntries(updated)
-    const session = updated.map((e) => ({ domain: e.domain, username: e.username, password: e.domain === domain ? password : "" }))
-    await chrome.storage.session.set({ vault: session })
+    setEntries(prev => [...prev, newEntry])
+    setStatus(null)
     setScreen("home")
   }
 
