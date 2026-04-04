@@ -116,6 +116,59 @@ function showDropdown(anchor: HTMLInputElement, domain: string) {
   })
 }
 
+async function showSaveLedgerPrompt(username: string, password: string) {
+  const prompt = document.createElement("div")
+  prompt.style.cssText = `
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 2147483647;
+    background: #ffffff;
+    border: 1.5px solid #e4e2ff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(97,82,232,0.18);
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 16px 18px;
+    width: 260px;
+    animation: oryn-in 0.2s ease;
+  `
+  prompt.innerHTML = `
+    <style>@keyframes oryn-in { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }</style>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <img src="${chrome.runtime.getURL("assets/logo.png")}" style="width:30px;height:30px;border-radius:8px;object-fit:cover;flex-shrink:0;" />
+      <span style="font-size:13px;font-weight:800;color:#1a1535;">Confirm on Ledger</span>
+    </div>
+    <div style="font-size:12px;color:#8b84b0;line-height:1.6;margin-bottom:12px;">
+      Check your Ledger screen and <strong style="color:#6152e8;">approve</strong> the signature request to save your password.
+    </div>
+    <div id="__oryn_save_status" style="display:flex;align-items:center;gap:8px;">
+      <div style="width:14px;height:14px;border:2px solid #e4e2ff;border-top-color:#6152e8;border-radius:50%;animation:oryn-spin 0.7s linear infinite;flex-shrink:0;"></div>
+      <span style="font-size:11px;color:#8b84b0;font-weight:600;">Waiting for approval…</span>
+    </div>
+    <style>@keyframes oryn-spin { to { transform: rotate(360deg) } }</style>
+  `
+  document.body.appendChild(prompt)
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "SAVE_PASSWORD_REQUEST",
+      domain: window.location.hostname,
+      username,
+      password,
+    })
+    const status = prompt.querySelector<HTMLElement>("#__oryn_save_status")
+    if (status) {
+      if (response?.ok) {
+        status.innerHTML = `<span style="font-size:11px;color:#22c55e;font-weight:700;">✓ Saved successfully</span>`
+      } else {
+        status.innerHTML = `<span style="font-size:11px;color:#ef4444;font-weight:700;">✗ ${response?.error ?? "Save failed"}</span>`
+      }
+    }
+    setTimeout(() => prompt.remove(), 2000)
+  } catch {
+    prompt.remove()
+  }
+}
+
 async function showLedgerPrompt(anchor: HTMLInputElement) {
   const prompt = document.createElement("div")
   prompt.id = "__oryn_ledger_prompt"
@@ -260,14 +313,9 @@ function showSaveBanner(username: string, password: string) {
 
   banner.querySelector("#__oryn_close")?.addEventListener("click", close)
   banner.querySelector("#__oryn_ignore")?.addEventListener("click", close)
-  banner.querySelector("#__oryn_save")?.addEventListener("click", () => {
-    chrome.runtime.sendMessage({
-      type: "SAVE_PASSWORD_REQUEST",
-      domain: window.location.hostname,
-      username,
-      password,
-    })
+  banner.querySelector("#__oryn_save")?.addEventListener("click", async () => {
     close()
+    showSaveLedgerPrompt(username, password)
   })
 
   // Auto-dismiss after 12s

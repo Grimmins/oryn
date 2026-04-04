@@ -45,7 +45,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         const ownerAddress = await getEthAddress(sessionId)
         _signatureMaster = await _signer.signTypedData(
           { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
-          { MasterKey: [{ name: "action", type: "string" }] },
+          { login: [{ name: "action", type: "string" }] },
           { action: "Unlock Oryn to see your credentials" },
         )
 
