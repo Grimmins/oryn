@@ -1,63 +1,70 @@
 import {
-  ConsoleLogger,
   DeviceActionStatus,
   DeviceManagementKitBuilder,
 } from "@ledgerhq/device-management-kit"
 import { SignerEthBuilder } from "@ledgerhq/device-signer-kit-ethereum"
 import { speculosTransportFactory } from "@ledgerhq/device-transport-kit-speculos"
+import { webHidTransportFactory } from "@ledgerhq/device-transport-kit-web-hid"
 import { ethers } from "ethers"
 
-export const dmk = new DeviceManagementKitBuilder()
-  .addTransport(speculosTransportFactory("http://localhost:5001"))
-  .build()
+export type TransportConfig =
+  | { type: "webhid" }
+  | { type: "speculos"; port: number }
+
+let _dmk: ReturnType<DeviceManagementKitBuilder["build"]> | null = null
+
+export function buildDmk(config: TransportConfig) {
+  const builder = new DeviceManagementKitBuilder()
+  if (config.type === "speculos") {
+    builder.addTransport(speculosTransportFactory(`http://localhost:${config.port}`))
+  } else {
+    builder.addTransport(webHidTransportFactory)
+  }
+  _dmk = builder.build()
+  return _dmk
+}
+
+export function getDmk() {
+  if (!_dmk) throw new Error("DMK not initialized — call buildDmk first")
+  return _dmk
+}
 
 let discoverySubscription: any
 let stateSubscription: any
 let currentSessionId: string | null = null
 
 export function startDiscoveryAndConnect(
-  onStateChange?: (state: ReturnType<typeof dmk.getDeviceSessionState> extends { subscribe: (o: { next: (v: infer S) => void }) => void } ? S : never) => void
+  onStateChange?: (state: any) => void
 ): Promise<string> {
-  if (discoverySubscription) {
-    discoverySubscription.unsubscribe()
-  }
-
-  console.log("Starting device discovery...")
+  const dmk = getDmk()
+  if (discoverySubscription) discoverySubscription.unsubscribe()
 
   return new Promise((resolve, reject) => {
     discoverySubscription = dmk.startDiscovering({}).subscribe({
-      next: async (device) => {
-        console.log(`Found device: ${device.id}, model: ${device.deviceModel.model}`)
+      next: async (device: any) => {
         try {
           currentSessionId = await dmk.connect({ device })
-          console.log(`Connected! Session ID: ${currentSessionId}`)
           discoverySubscription.unsubscribe()
           if (onStateChange) {
             stateSubscription = monitorDeviceState(currentSessionId, onStateChange)
           }
           resolve(currentSessionId)
         } catch (error) {
-          console.error("Connection failed:", error)
           reject(error)
         }
       },
-      error: (error) => {
-        console.error("Discovery error:", error)
-        reject(error)
-      },
+      error: reject,
     })
   })
 }
 
 function monitorDeviceState(sessionId: string, onStateChange?: (state: any) => void) {
-  return dmk.getDeviceSessionState({ sessionId }).subscribe({
-    next: (state) => {
+  return getDmk().getDeviceSessionState({ sessionId }).subscribe({
+    next: (state: any) => {
       console.log(`Device status: ${state.deviceStatus}`)
       if (onStateChange) onStateChange(state)
     },
-    error: (error) => {
-      console.error("State monitoring error:", error)
-    },
+    error: console.error,
   })
 }
 
@@ -66,8 +73,7 @@ export async function cleanup() {
   if (stateSubscription) stateSubscription.unsubscribe()
   if (currentSessionId) {
     try {
-      await dmk.disconnect({ sessionId: currentSessionId })
-      console.log("Device disconnected successfully")
+      await getDmk().disconnect({ sessionId: currentSessionId })
       currentSessionId = null
     } catch (error) {
       console.error("Disconnection error:", error)
@@ -75,7 +81,6 @@ export async function cleanup() {
   }
 }
 
-// Wraps an Observable<DeviceActionState> into a Promise that resolves on Completed
 export function actionToPromise<TOutput>(observable: { subscribe: (obs: any) => any }): Promise<TOutput> {
   return new Promise((resolve, reject) => {
     observable.subscribe({
@@ -90,17 +95,15 @@ export function actionToPromise<TOutput>(observable: { subscribe: (obs: any) => 
 
 export const DERIVATION_PATH = "44'/60'/0'/0/0"
 
-// Récupère l'adresse Ethereum du Ledger connecté
 export async function getEthAddress(sessionId: string): Promise<string> {
-  const signerEth = new SignerEthBuilder({ dmk, sessionId }).build()
+  const signerEth = new SignerEthBuilder({ dmk: getDmk(), sessionId }).build()
   const { observable } = signerEth.getAddress(DERIVATION_PATH, { checkOnDevice: false })
   const result = await actionToPromise<{ address: `0x${string}` }>(observable)
   return result.address
 }
 
-// Signe un message personnel via le Ledger et retourne la signature hex complète
 export async function signPersonalMessage(sessionId: string, message: string): Promise<string> {
-  const signerEth = new SignerEthBuilder({ dmk, sessionId }).build()
+  const signerEth = new SignerEthBuilder({ dmk: getDmk(), sessionId }).build()
   const { observable } = signerEth.signMessage(DERIVATION_PATH, message)
   const sig = await actionToPromise<{ r: string; s: string; v: number }>(observable)
   return ethers.Signature.from({ r: sig.r, s: sig.s, v: sig.v }).serialized
