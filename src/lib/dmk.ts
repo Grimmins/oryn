@@ -4,22 +4,13 @@ import {
 } from "@ledgerhq/device-management-kit"
 import { SignerEthBuilder } from "@ledgerhq/device-signer-kit-ethereum"
 import { speculosTransportFactory } from "@ledgerhq/device-transport-kit-speculos"
-import { webHidTransportFactory } from "@ledgerhq/device-transport-kit-web-hid"
 import { ethers } from "ethers"
-
-export type TransportConfig =
-  | { type: "webhid" }
-  | { type: "speculos"; port: number }
 
 let _dmk: ReturnType<DeviceManagementKitBuilder["build"]> | null = null
 
-export function buildDmk(config: TransportConfig) {
+export function buildDmk(port = 5001) {
   const builder = new DeviceManagementKitBuilder()
-  if (config.type === "speculos") {
-    builder.addTransport(speculosTransportFactory(`http://localhost:${config.port}`))
-  } else {
-    builder.addTransport(webHidTransportFactory)
-  }
+  builder.addTransport(speculosTransportFactory(`http://localhost:${port}`))
   _dmk = builder.build()
   return _dmk
 }

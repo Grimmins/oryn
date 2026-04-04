@@ -63,10 +63,10 @@ function PopupInner() {
     return () => chrome.storage.session.onChanged.removeListener(listener)
   }, [])
 
-  const handleConnect = async (transport: any) => {
+  const handleConnect = async (port: number) => {
     setLoading(true)
     setStatus("Looking for Ledger…")
-    chrome.runtime.sendMessage({ type: "CONNECT_LEDGER", transport })
+    chrome.runtime.sendMessage({ type: "CONNECT_LEDGER", port })
   }
 
   const handleDisconnect = async () => {

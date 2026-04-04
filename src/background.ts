@@ -2,7 +2,7 @@ export {}
 
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
 import { ethers } from "ethers"
-import { type TransportConfig, buildDmk, cleanup, getDmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
+import { buildDmk, cleanup, getDmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
 import { LedgerSigner } from "./lib/ledger-signer"
 import { getCredentials, loadVault } from "./lib/vault"
 import { executeSave } from "./lib/save-password"
@@ -25,8 +25,7 @@ function setStatus(step: string) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type === "CONNECT_LEDGER") {
-    const transport: TransportConfig = msg.transport ?? { type: "webhid" }
-    buildDmk(transport)
+    buildDmk(msg.port ?? 5001)
     setStatus("Looking for Ledger…")
     ;(async () => {
       try {
@@ -58,6 +57,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         })
         reply({ ok: true })
       } catch (e: any) {
+        console.error("Connection failed:", e)
         const error = e?._tag === "NoAccessibleDeviceError" ? "No device selected" : "Connection failed"
         await chrome.storage.session.set({
           connectionStatus: { step: null, connected: false, error },
