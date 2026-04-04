@@ -4,13 +4,22 @@ import {
 } from "@ledgerhq/device-management-kit"
 import { SignerEthBuilder, type TypedData } from "@ledgerhq/device-signer-kit-ethereum"
 import { speculosTransportFactory } from "@ledgerhq/device-transport-kit-speculos"
+import { webHidTransportFactory } from "@ledgerhq/device-transport-kit-web-hid"
 import { ethers } from "ethers"
+
+export type TransportConfig =
+  | { type: "webhid" }
+  | { type: "speculos"; port: number }
 
 let _dmk: ReturnType<DeviceManagementKitBuilder["build"]> | null = null
 
-export function buildDmk(port = 5001) {
+export function buildDmk(config: TransportConfig) {
   const builder = new DeviceManagementKitBuilder()
-  builder.addTransport(speculosTransportFactory(`http://localhost:${port}`))
+  if (config.type === "speculos") {
+    builder.addTransport(speculosTransportFactory(`http://localhost:${config.port}`))
+  } else {
+    builder.addTransport(webHidTransportFactory)
+  }
   _dmk = builder.build()
   return _dmk
 }
@@ -95,7 +104,7 @@ export async function getEthAddress(sessionId: string): Promise<string> {
 
 export async function signPersonalMessage(sessionId: string, message: string): Promise<string> {
   const signerEth = new SignerEthBuilder({ dmk: getDmk(), sessionId }).build()
-  const { observable } = signerEth.signMessage(DERIVATION_PATH, message)
+  const { observable } = signerEth.signMessage(DERIVATION_PATH, new TextEncoder().encode(message))
   const sig = await actionToPromise<{ r: string; s: string; v: number }>(observable)
   return ethers.Signature.from({ r: sig.r, s: sig.s, v: sig.v }).serialized
 }

@@ -36,7 +36,8 @@
       "storage",
       "tabs",
       "activeTab",
-      "alarms"
+      "alarms",
+      "hid"
     ],
     "host_permissions": [
       "https://*/*",

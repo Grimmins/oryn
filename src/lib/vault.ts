@@ -22,7 +22,7 @@ export async function saveEntry(
   const signatureEntry = await signer.signTypedData(
     { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
     { SavePassword: [{ name: "action", type: "string" }, { name: "domain", type: "string" }] },
-    { action: "Encrypt password for domain", domain },
+    { action: "Encrypt/Decrypt password for domain", domain },
   )
   const AESkeyEntry = await deriveAESKey(signatureEntry)
   const blobPW = await encrypt(AESkeyEntry, password)
@@ -62,7 +62,7 @@ export async function getCredentials(
   const signatureEntry = await signer.signTypedData(
     { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
     { SavePassword: [{ name: "action", type: "string" }, { name: "domain", type: "string" }] },
-    { action: "Encrypt password for domain", domain },
+    { action: "Encrypt/Decrypt password for domain", domain },
   )
   console.log("[getCredentials] entry key signed, decrypting…")
   const AESkeyEntry = await deriveAESKey(signatureEntry)
