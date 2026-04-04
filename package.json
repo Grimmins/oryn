@@ -32,7 +32,16 @@
     "background": {
       "type": "module"
     },
-    "permissions": ["storage", "tabs", "activeTab", "alarms"]
+    "permissions": [
+      "storage",
+      "tabs",
+      "activeTab",
+      "alarms"
+    ],
+    "host_permissions": [
+      "https://*/*",
+      "http://localhost/*"
+    ]
   },
   "browser": {
     "@ledgerhq/device-transport-kit-web-hid": "@ledgerhq/device-transport-kit-web-hid/dist/index.js"

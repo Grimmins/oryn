@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 contract PasswordVault {
     struct VaultEntry {
+        bytes encryptedBlobDomain;
         bytes encryptedBlobPassword;
         bytes encryptedBlobUsername;
         uint256 version;
@@ -20,13 +21,14 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
 
     event PasswordSaved(address indexed owner, bytes32 indexed siteHash, uint256 version);
 
-    function savePassword(bytes32 siteHash, bytes calldata blobPW, bytes calldata blobU) external {
+    function savePassword(bytes32 siteHash, bytes calldata blobDomain, bytes calldata blobPW, bytes calldata blobU) external {
         require(blobPW.length > 12, "password blob too short");
         require(blobU.length > 12, "username blob too short");
 
         VaultEntry storage entry = _vaults[msg.sender][siteHash];
         bool isNew = entry.updatedAt == 0;
 
+        entry.encryptedBlobDomain = blobDomain;
         entry.encryptedBlobPassword = blobPW;
         entry.encryptedBlobUsername = blobU;
         entry.version = isNew ? 1 : entry.version + 1;
@@ -44,6 +46,7 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
         external
         view
         returns (
+            bytes memory encryptedBlobDomain,
             bytes memory encryptedBlobPassword,
             bytes memory encryptedBlobUsername,
             uint256 version,
@@ -51,7 +54,7 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
         )
     {
         VaultEntry storage entry = _vaults[msg.sender][siteHash];
-        return (entry.encryptedBlobPassword, entry.encryptedBlobUsername, entry.version, entry.updatedAt);
+        return (entry.encryptedBlobDomain, entry.encryptedBlobPassword, entry.encryptedBlobUsername, entry.version, entry.updatedAt);
     }
 
     function getAllPasswords()
@@ -59,6 +62,7 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
         view
         returns (
             bytes32[] memory siteHashes,
+            bytes[] memory encryptedBlobDomains,
             bytes[] memory encryptedBlobPasswords,
             bytes[] memory encryptedBlobUsernames,
             uint256[] memory versions,
@@ -69,6 +73,7 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
         uint256 len = hashes.length;
 
         siteHashes = new bytes32[](len);
+        encryptedBlobDomains = new bytes[](len);
         encryptedBlobPasswords = new bytes[](len);
         encryptedBlobUsernames = new bytes[](len);
         versions = new uint256[](len);
@@ -78,6 +83,7 @@ mapping(address => mapping(bytes32 => uint256)) private _siteHashIndex;
             bytes32 h = hashes[i];
             VaultEntry storage e = _vaults[msg.sender][h];
             siteHashes[i] = h;
+            encryptedBlobDomains[i] = e.encryptedBlobDomain;
             encryptedBlobPasswords[i] = e.encryptedBlobPassword;
             encryptedBlobUsernames[i] = e.encryptedBlobUsername;
             versions[i] = e.version;
