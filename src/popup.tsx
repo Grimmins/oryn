@@ -1,21 +1,22 @@
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
+import { ethers } from "ethers"
 import { useEffect, useRef, useState } from "react"
 import { AddScreen } from "./components/AddScreen"
 import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
 import type { SessionEntry } from "./background"
-import { ethers } from "ethers"
-import { cleanup, dmk, getEthAddress, signPersonalMessage, startDiscoveryAndConnect } from "./lib/dmk"
-import { deriveSiteHash } from "./lib/crypto"
+import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
 import { LedgerSigner } from "./lib/ledger-signer"
 import { loadVault, saveEntry } from "./lib/vault"
 import { C } from "./styles"
+
+const RPC_URL = "https://sepolia.base.org"
 
 type Screen = "home" | "add"
 
 export default function Popup() {
   const [connected, setConnected] = useState(false)
-  const [deviceName, setDeviceName] = useState<string | null>(null)
+  const [, setDeviceName] = useState<string | null>(null)
   const [address, setAddress] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -23,21 +24,16 @@ export default function Popup() {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [currentDomain, setCurrentDomain] = useState<string | null>(null)
 
-  // masterSig et sessionId en mémoire uniquement — jamais persistés, effacés au disconnect
-  const masterSigRef = useRef<string | null>(null)
-  const sessionIdRef = useRef<string | null>(null)
+  const signerRef = useRef<LedgerSigner | null>(null)
 
   useEffect(() => {
     chrome.storage.session.get("sessionId", ({ sessionId }) => {
       if (sessionId) {
-        console.log(`Existing session found with ID: ${sessionId}`)
         setConnected(true)
         entries.length === 0 && chrome.storage.session.get("vault", ({ vault }) => {
           const sessionEntries: SessionEntry[] = vault ?? []
           setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
         })
-      } else {
-        console.log("No existing session found")
       }
     })
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -56,19 +52,19 @@ export default function Popup() {
       await chrome.runtime.sendMessage({ type: "INITIALIZE_DEVICE", device })
       setDeviceName(device.name)
 
+      const provider = new ethers.JsonRpcProvider(RPC_URL)
+      const signer = new LedgerSigner(sessionId, provider)
+      signerRef.current = signer
+
       setStatus("Waiting for Ledger confirmation…")
-      const [ownerAddress, masterSig] = await Promise.all([
-        getEthAddress(sessionId),
-        signPersonalMessage(sessionId, "chainvault:master:v1"),
-      ])
-      masterSigRef.current = masterSig
-      sessionIdRef.current = sessionId
+      const ownerAddress = await getEthAddress(sessionId)
       setAddress(ownerAddress)
 
       setStatus("Loading vault…")
-      const loaded = await loadVault(masterSig, ownerAddress)
+      console.log("Loading vault for session:", sessionId)
+      const loaded = await loadVault(signer, ownerAddress)
       setEntries(loaded)
-      const session: SessionEntry[] = loaded.map((e) => ({ domain: e.domain, username: e.username, password: "" }))
+      const session: SessionEntry[] = loaded.map((e) => ({ domain: e.domain, username: e.username ?? "", password: "" }))
       await chrome.storage.session.set({ vault: session })
 
       setConnected(true)
@@ -84,8 +80,7 @@ export default function Popup() {
   const disconnect = async () => {
     await cleanup()
     await chrome.storage.session.remove("vault")
-    masterSigRef.current = null
-    sessionIdRef.current = null
+    signerRef.current = null
     setConnected(false)
     setDeviceName(null)
     setAddress(null)
@@ -95,29 +90,24 @@ export default function Popup() {
   }
 
   const handleSave = async (domain: string, username: string, password: string) => {
-    const masterSig = masterSigRef.current
-    const sessionId = sessionIdRef.current
-    if (!masterSig || !sessionId) return
+    const signer = signerRef.current
+    if (!signer) return
 
     setStatus("Waiting for Ledger confirmation…")
     try {
-      const provider = new ethers.JsonRpcProvider("https://sepolia.base.org")
-      const ledgerSigner = new LedgerSigner(sessionId, provider)
-      await saveEntry(domain, username, password, masterSig, ledgerSigner)
+      await saveEntry(domain, username, password, signer)
     } catch (e) {
       console.error("Failed to save on-chain:", e)
       setStatus("Save failed")
       return
     }
 
-    const siteHash = await deriveSiteHash(domain, masterSig)
-    const newEntry: VaultEntry = { domain, username, siteHash }
+    const newEntry: VaultEntry = { domain, username, siteHash: crypto.randomUUID() }
     const updated = [...entries, newEntry]
     setEntries(updated)
-
     const session: SessionEntry[] = updated.map((e) => ({
       domain: e.domain,
-      username: e.username,
+      username: e.username ?? "",
       password: e.domain === domain ? password : "",
     }))
     await chrome.storage.session.set({ vault: session })
@@ -126,17 +116,17 @@ export default function Popup() {
   }
 
   return (
-    <div style={{ width: 340, minHeight: 460, background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, display: "flex", flexDirection: "column" }}>
+    <div style={{ width: 380, minHeight: 520, background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, display: "flex", flexDirection: "column" }}>
       {/* Header */}
-      <div style={{ padding: "18px 22px 16px", borderBottom: `1.5px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "18px 22px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🔐</div>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🔐</div>
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.4px", color: C.text }}>Oryn</span>
         </div>
         {connected && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLight, borderRadius: 20, padding: "4px 10px" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>{deviceName ?? "Ledger"}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>Connected</span>
           </div>
         )}
       </div>

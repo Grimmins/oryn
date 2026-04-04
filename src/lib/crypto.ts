@@ -1,5 +1,3 @@
-import { ethers } from "ethers"
-
 export async function deriveAESKey(signature: string): Promise<CryptoKey> {
   const hash = await crypto.subtle.digest(
     "SHA-256",
