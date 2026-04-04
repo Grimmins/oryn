@@ -29,15 +29,10 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "host_permissions": [
-      "https://*/*",
-      "<all_urls>"
-    ],
-    "permissions": [
-      "storage",
-      "tabs",
-      "activeTab"
-    ]
+    "background": {
+      "type": "module"
+    },
+    "permissions": ["storage", "tabs", "activeTab", "alarms"]
   },
   "browser": {
     "@ledgerhq/device-transport-kit-web-hid": "@ledgerhq/device-transport-kit-web-hid/dist/index.js"

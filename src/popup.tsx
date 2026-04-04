@@ -5,6 +5,7 @@ import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
 import { cleanup, dmk, startDiscoveryAndConnect } from "./lib/dmk"
 import { C } from "./styles"
+import type { SessionEntry } from "./background"
 
 type Screen = "home" | "add"
 
@@ -19,6 +20,19 @@ export default function Popup() {
   const [currentDomain, setCurrentDomain] = useState<string | null>(null)
 
   useEffect(() => {
+    const sessionId = chrome.storage.session.get("sessionId", ({ sessionId }) => {
+      if (sessionId) {
+        console.log(`Existing session found with ID: ${sessionId}`)
+        setConnected(true)
+        // Optionally, you could also retrieve the device name and address here if needed
+        entries.length === 0 && chrome.storage.session.get("vault", ({ vault }) => {
+          const sessionEntries: SessionEntry[] = vault ?? []
+          setEntries(sessionEntries.map(e => ({ domain: e.domain, username: e.username, siteHash: "" })))
+        })
+      } else {
+        console.log("No existing session found")
+      }
+    })
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
       if (tab?.url) setCurrentDomain(new URL(tab.url).hostname)
     })
@@ -32,6 +46,7 @@ export default function Popup() {
         if (state.deviceStatus === DeviceStatus.LOCKED) setStatus("Locked — enter your PIN")
       })
       const device = dmk.getConnectedDevice({ sessionId })
+      await chrome.runtime.sendMessage({ type: "INITIALIZE_DEVICE", device })
       setDeviceName(device.name)
       setConnected(true)
       setStatus(null)
