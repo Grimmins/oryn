@@ -1,0 +1,133 @@
+{
+  "address": "0xAa9cA41a2B708dB85768a663513b96EE4A10C68D",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "siteHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "version",
+          "type": "uint256"
+        }
+      ],
+      "name": "PasswordSaved",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "getAllPasswords",
+      "outputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "siteHashes",
+          "type": "bytes32[]"
+        },
+        {
+          "internalType": "bytes[]",
+          "name": "encryptedBlobPasswords",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "bytes[]",
+          "name": "encryptedBlobUsernames",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "versions",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "updatedAts",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "siteHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getPassword",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "encryptedBlobPassword",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "encryptedBlobUsername",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "version",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "siteHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes",
+          "name": "blobPW",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "blobU",
+          "type": "bytes"
+        }
+      ],
+      "name": "savePassword",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "vaultSize",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}

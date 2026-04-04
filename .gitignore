@@ -3,7 +3,6 @@
 /.pnp
 .pnp.js
 **/.idea/
-**/vault.json
 # testing
 /coverage
 
