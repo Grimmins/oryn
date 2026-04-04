@@ -133,7 +133,7 @@ export function VaultScreen({ address, entries, currentDomain: _currentDomain, o
         <button onClick={onAdd} style={btn({ background: C.accent, color: "#fff", boxShadow: "0 4px 16px rgba(97,82,232,0.25)" })}>
           + Add password
         </button>
-        <button onClick={onDisconnect} style={btn({ background: C.accentLight, color: C.accent })}>
+<button onClick={onDisconnect} style={btn({ background: C.accentLight, color: C.accent })}>
           Disconnect
         </button>
       </div>

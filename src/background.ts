@@ -2,7 +2,10 @@ export {}
 
 import { DeviceStatus } from "@ledgerhq/device-management-kit"
 import { ethers } from "ethers"
-import { buildDmk, cleanup, getDmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
+import { type TransportConfig, buildDmk, cleanup, getDmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
+
+// Pre-register WebHID event handlers at initial evaluation (MV3 requirement)
+buildDmk({ type: "webhid" })
 import { LedgerSigner } from "./lib/ledger-signer"
 import { getCredentials, loadVault } from "./lib/vault"
 import { executeSave } from "./lib/save-password"
@@ -25,7 +28,8 @@ function setStatus(step: string) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg.type === "CONNECT_LEDGER") {
-    buildDmk(msg.port ?? 5001)
+    const transport: TransportConfig = msg.transport ?? { type: "speculos", port: 5001 }
+    buildDmk(transport)
     setStatus("Looking for Ledger…")
     ;(async () => {
       try {
@@ -39,7 +43,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
 
         setStatus("Waiting for Ledger confirmation…")
         const ownerAddress = await getEthAddress(sessionId)
-        _signatureMaster = await _signer.signMessage("oryn:master:v1")
+        _signatureMaster = await _signer.signTypedData(
+          { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
+          { login: [{ name: "action", type: "string" }] },
+          { action: "Unlock Oryn to see your credentials" },
+        )
 
         setStatus("Loading vault…")
         const entries = await loadVault(ownerAddress, _signatureMaster)
@@ -136,4 +144,5 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     })()
     return true
   }
+
 })

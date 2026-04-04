@@ -2,11 +2,12 @@ import { useState } from "react"
 import { useTheme } from "../lib/ThemeContext"
 import { btn, inputStyle, labelStyle } from "../styles"
 import logoUrl from "url:../../assets/logo.png"
+import type { TransportConfig } from "../lib/dmk"
 
 type Props = {
   loading: boolean
   status: string | null
-  onConnect: (port: number) => void
+  onConnect: (transport: TransportConfig) => void
 }
 
 const HELP_STEPS = [
@@ -33,10 +34,14 @@ export function ConnectScreen({ loading, status, onConnect }: Props) {
   const { C } = useTheme()
   const [showHelp, setShowHelp] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
+  const [useSpeculos, setUseSpeculos] = useState(true)
   const [speculosPort, setSpeculosPort] = useState("5001")
 
   const handleConnect = () => {
-    onConnect(parseInt(speculosPort) || 5001)
+    const transport: TransportConfig = useSpeculos
+      ? { type: "speculos", port: parseInt(speculosPort) || 5001 }
+      : { type: "webhid" }
+    onConnect(transport)
   }
 
   return (
@@ -61,17 +66,35 @@ export function ConnectScreen({ loading, status, onConnect }: Props) {
         </div>
       )}
 
-      {/* Speculos port config */}
+      {/* Transport config */}
       {showConfig && (
-        <div style={{ width: "100%", background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "14px 16px" }}>
-          <label style={{ ...labelStyle, color: C.muted }}>Speculos port</label>
-          <input
-            type="number"
-            value={speculosPort}
-            onChange={(e) => setSpeculosPort(e.target.value)}
-            style={inputStyle(C)}
-            placeholder="5001"
-          />
+        <div style={{ width: "100%", background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setUseSpeculos(true)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${useSpeculos ? C.accent : C.border}`, background: useSpeculos ? C.accentLight : "transparent", color: useSpeculos ? C.accent : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Speculos
+            </button>
+            <button
+              onClick={() => setUseSpeculos(false)}
+              style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${!useSpeculos ? C.accent : C.border}`, background: !useSpeculos ? C.accentLight : "transparent", color: !useSpeculos ? C.accent : C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              Real device
+            </button>
+          </div>
+          {useSpeculos && (
+            <div>
+              <label style={{ ...labelStyle, color: C.muted }}>Speculos port</label>
+              <input
+                type="number"
+                value={speculosPort}
+                onChange={(e) => setSpeculosPort(e.target.value)}
+                style={inputStyle(C)}
+                placeholder="5001"
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -87,7 +110,7 @@ export function ConnectScreen({ loading, status, onConnect }: Props) {
           style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: C.muted, fontSize: 12, fontWeight: 600, padding: 0 }}
         >
           <span style={{ fontSize: 14 }}>⚙️</span>
-          {`Speculos :${speculosPort}`}
+          {useSpeculos ? `Speculos :${speculosPort}` : "Real device"}
         </button>
 
         {/* Help button */}

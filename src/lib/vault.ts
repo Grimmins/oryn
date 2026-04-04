@@ -19,7 +19,11 @@ export async function saveEntry(
   const AESkeyMaster = await deriveAESKey(signatureMaster)
   const blobDomain = await encrypt(AESkeyMaster, domain)
 
-  const signatureEntry = await signer.signMessage(`oryn:save-password:${domain}`)
+  const signatureEntry = await signer.signTypedData(
+    { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
+    { handlePassword: [{ name: "action", type: "string" }, { name: "domain", type: "string" }] },
+    { action: "Encrypt/Decrypt password for domain", domain },
+  )
   const AESkeyEntry = await deriveAESKey(signatureEntry)
   const blobPW = await encrypt(AESkeyEntry, password)
   const blobU  = await encrypt(AESkeyEntry, username)
@@ -55,7 +59,11 @@ export async function getCredentials(
   if (!blobPW || ethers.getBytes(blobPW).length === 0) return null
 
   console.log("[getCredentials] signing entry key on Ledger…")
-  const signatureEntry = await signer.signMessage(`oryn:save-password:${domain}`)
+  const signatureEntry = await signer.signTypedData(
+    { name: "Oryn Password Manager", version: "1", chainId: 84532, verifyingContract: "0xe14DE7ef59e4D7c22c3905Df38329beb7420d28d" },
+    { handlePassword: [{ name: "action", type: "string" }, { name: "domain", type: "string" }] },
+    { action: "Encrypt/Decrypt password for domain", domain },
+  )
   console.log("[getCredentials] entry key signed, decrypting…")
   const AESkeyEntry = await deriveAESKey(signatureEntry)
 
