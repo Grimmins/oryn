@@ -4,19 +4,22 @@ import { useEffect, useRef, useState } from "react"
 import { AddScreen } from "./components/AddScreen"
 import { ConnectScreen } from "./components/ConnectScreen"
 import { VaultScreen, type VaultEntry } from "./components/VaultScreen"
-import type { SessionEntry } from "./background"
+import { ThemeProvider, useTheme } from "./lib/ThemeContext"
 import { cleanup, dmk, getEthAddress, startDiscoveryAndConnect } from "./lib/dmk"
 import { LedgerSigner } from "./lib/ledger-signer"
 import { loadVault, saveEntry } from "./lib/vault"
-import { C } from "./styles"
 import type { SessionEntry } from "./background"
+import "./style.css"
+import logoUrl from "url:../assets/logo.png"
 
 const RPC_URL = "https://sepolia.base.org"
 
 type Screen = "home" | "add"
 
-export default function Popup() {
+function PopupInner() {
+  const { C, mode, toggle } = useTheme()
   const [connected, setConnected] = useState(false)
+  const [, setDeviceName] = useState<string | null>(null)
   const [address, setAddress] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -113,15 +116,24 @@ export default function Popup() {
       {/* Header */}
       <div style={{ padding: "18px 22px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🔐</div>
+          <img src={logoUrl} alt="Oryn" style={{ width: 40, height: 40, borderRadius: 12, objectFit: "cover" }} />
           <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.4px", color: C.text }}>Oryn</span>
         </div>
-        {connected && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLight, borderRadius: 20, padding: "4px 10px" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>Connected</span>
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {connected && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.greenLight, borderRadius: 20, padding: "4px 10px" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.green, display: "inline-block" }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.green }}>Connected</span>
+            </div>
+          )}
+          <button
+            onClick={toggle}
+            title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            style={{ background: C.accentLight, border: "none", borderRadius: 10, width: 30, height: 30, cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {mode === "dark" ? "☀️" : "🌙"}
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -134,5 +146,13 @@ export default function Popup() {
         }
       </div>
     </div>
+  )
+}
+
+export default function Popup() {
+  return (
+    <ThemeProvider>
+      <PopupInner />
+    </ThemeProvider>
   )
 }

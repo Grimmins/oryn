@@ -41,6 +41,12 @@
     "host_permissions": [
       "https://*/*",
       "http://localhost/*"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["assets/logo.png"],
+        "matches": ["<all_urls>"]
+      }
     ]
   },
   "browser": {

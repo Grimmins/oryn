@@ -1,4 +1,5 @@
-import { C, btn } from "../styles"
+import { useTheme } from "../lib/ThemeContext"
+import { btn } from "../styles"
 
 export type VaultEntry = {
   domain: string
@@ -14,7 +15,8 @@ type Props = {
   onDisconnect: () => void
 }
 
-export function VaultScreen({ address, entries, currentDomain, onAdd, onDisconnect }: Props) {
+export function VaultScreen({ address, entries, currentDomain: _currentDomain, onAdd, onDisconnect }: Props) {
+  const { C } = useTheme()
   const truncate = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
   return (
